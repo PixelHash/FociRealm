@@ -23,7 +23,7 @@ public class OllamaManager {
 
     private boolean isOllamaResponsive() {
         try {
-            URL url = new URL("http://localhost:11434/api/version");
+            URL url = new URL("http://127.0.0.1:11434/api/version");
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
             con.setConnectTimeout(2000); // Only wait 2 seconds
@@ -38,16 +38,28 @@ public class OllamaManager {
     private void bootOllamaServer() {
         new Thread(() -> {
             try {
-                ProcessBuilder pb = new ProcessBuilder("ollama", "serve");
+                boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+                ProcessBuilder pb;
+                
+                if (isWindows) {
+                    pb = new ProcessBuilder("cmd.exe", "/c", "ollama serve");
+                } else {
+                    // Linux/Mac can run it directly
+                    pb = new ProcessBuilder("ollama", "serve");
+                }
+                
+                pb.redirectErrorStream(true); 
                 ollamaProcess = pb.start();
 
                 System.out.println("[OllamaManager] System process 'ollama serve' executed.");
+                
                 Thread.sleep(3000);
                 if (isOllamaResponsive()) {
                     System.out.println("[OllamaManager] Success! AI Engine is now LIVE.");
                 } else {
-                    System.out.println("[OllamaManager] ❌ ERROR: Failed to start Ollama. Is it installed?");
+                    System.out.println("[OllamaManager] ❌ ERROR: Failed to start Ollama.");
                 }
+
                 BufferedReader reader = new BufferedReader(new InputStreamReader(ollamaProcess.getInputStream()));
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -56,15 +68,8 @@ public class OllamaManager {
                     }
                 }
             } catch (Exception e) {
-                System.out.println("[OllamaManager] ❌ CRITICAL: Could not execute 'ollama' command. Please install from ollama.com");
+                System.out.println("[OllamaManager] ❌ CRITICAL: Could not execute 'ollama' command.");
             }
         }).start();
-    }
-
-    public void shutdown() {
-        if (ollamaProcess != null && ollamaProcess.isAlive()) {
-            System.out.println("[OllamaManager] Shutting down background AI server...");
-            ollamaProcess.destroy();
-        }
     }
 }
