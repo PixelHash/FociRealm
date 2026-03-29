@@ -35,7 +35,6 @@ public class NetworkManager {
 
     private final ConcurrentHashMap<String, PeerRecord> activePeers = new ConcurrentHashMap<>();
 
-    // --- NEW: Setter for the Room Code ---
     public void setRoomCode(String roomCode) {
         this.roomCode = roomCode;
     }
@@ -52,7 +51,6 @@ public class NetworkManager {
                 InetAddress broadcastAddress = InetAddress.getByName("255.255.255.255");
 
                 while (isRunning) {
-                    // PREFIX ADDED: "RoomCode|STATUS|..."
                     String payload = roomCode + "|STATUS|" + currentUser + "|" + currentStatus + "|" + currentXP;
                     byte[] buffer = payload.getBytes();
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length, broadcastAddress, PORT);
@@ -81,19 +79,15 @@ public class NetworkManager {
                         String rawMessage = new String(packet.getData(), 0, packet.getLength());
                         String senderIP = packet.getAddress().getHostAddress();
                         
-                        // --- NEW: Room Code Filtering ---
                         int firstPipeIndex = rawMessage.indexOf('|');
-                        if (firstPipeIndex == -1) continue; // Malformed packet, ignore
+                        if (firstPipeIndex == -1) continue;
                         
                         String incomingRoom = rawMessage.substring(0, firstPipeIndex);
                         if (!incomingRoom.equals(this.roomCode)) {
-                            continue; // DROP PACKET: Belongs to a different Arena!
+                            continue;
                         }
                         
-                        // Strip the room tag off so the rest of the logic works perfectly
                         String message = rawMessage.substring(firstPipeIndex + 1);
-                        
-                        // Limit split to 4 parts for STATUS, 3 parts for CHAT
                         String[] parts = message.split("\\|", 4); 
                         
                         if (parts.length > 0) {
