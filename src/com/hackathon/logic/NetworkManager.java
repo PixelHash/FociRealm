@@ -12,6 +12,9 @@ public class NetworkManager {
     private static final int PORT = 8888;
     private boolean isRunning = true;
     
+    // --- NEW: The Private Room Tag ---
+    private String roomCode = "Public"; 
+    
     private final String currentUser = System.getProperty("user.name"); 
     private String currentStatus = "Idle";
     private int currentXP = 0;
@@ -32,6 +35,11 @@ public class NetworkManager {
 
     private final ConcurrentHashMap<String, PeerRecord> activePeers = new ConcurrentHashMap<>();
 
+    // --- NEW: Setter for the Room Code ---
+    public void setRoomCode(String roomCode) {
+        this.roomCode = roomCode;
+    }
+
     public void updateMyStatus(String status, int xp) {
         this.currentStatus = status;
         this.currentXP = xp;
@@ -44,8 +52,8 @@ public class NetworkManager {
                 InetAddress broadcastAddress = InetAddress.getByName("255.255.255.255");
 
                 while (isRunning) {
-                    // PREFIX ADDED: "STATUS|"
-                    String payload = "STATUS|" + currentUser + "|" + currentStatus + "|" + currentXP;
+                    // PREFIX ADDED: "RoomCode|STATUS|..."
+                    String payload = roomCode + "|STATUS|" + currentUser + "|" + currentStatus + "|" + currentXP;
                     byte[] buffer = payload.getBytes();
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length, broadcastAddress, PORT);
                     socket.send(packet);
@@ -70,8 +78,20 @@ public class NetworkManager {
                         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                         socket.receive(packet); 
 
-                        String message = new String(packet.getData(), 0, packet.getLength());
+                        String rawMessage = new String(packet.getData(), 0, packet.getLength());
                         String senderIP = packet.getAddress().getHostAddress();
+                        
+                        // --- NEW: Room Code Filtering ---
+                        int firstPipeIndex = rawMessage.indexOf('|');
+                        if (firstPipeIndex == -1) continue; // Malformed packet, ignore
+                        
+                        String incomingRoom = rawMessage.substring(0, firstPipeIndex);
+                        if (!incomingRoom.equals(this.roomCode)) {
+                            continue; // DROP PACKET: Belongs to a different Arena!
+                        }
+                        
+                        // Strip the room tag off so the rest of the logic works perfectly
+                        String message = rawMessage.substring(firstPipeIndex + 1);
                         
                         // Limit split to 4 parts for STATUS, 3 parts for CHAT
                         String[] parts = message.split("\\|", 4); 
@@ -86,12 +106,10 @@ public class NetworkManager {
                                 refreshLeaderboardUI(leaderboardUI); 
                                 
                             } else if (parts[0].equals("CHAT") && parts.length >= 3) {
-                                // NEW: Route incoming chat messages to the UI
                                 String senderName = parts[1];
                                 String chatMsg = parts[2];
                                 Platform.runLater(() -> {
                                     chatUI.getItems().add(senderName + ": " + chatMsg);
-                                    // Auto-scroll to bottom
                                     chatUI.scrollTo(chatUI.getItems().size() - 1); 
                                 });
                             }
@@ -118,8 +136,8 @@ public class NetworkManager {
                 socket.setBroadcast(true);
                 InetAddress broadcastAddress = InetAddress.getByName("255.255.255.255");
                 
-                // PREFIX ADDED: "CHAT|"
-                String payload = "CHAT|" + currentUser + "|" + message;
+                // PREFIX ADDED: "RoomCode|CHAT|..."
+                String payload = roomCode + "|CHAT|" + currentUser + "|" + message;
                 byte[] buffer = payload.getBytes();
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length, broadcastAddress, PORT);
                 socket.send(packet);
@@ -132,7 +150,6 @@ public class NetworkManager {
     private void refreshLeaderboardUI(ListView<String> leaderboardUI) {
         Platform.runLater(() -> {
             leaderboardUI.getItems().clear();
-            // REMOVED THE FAKE HEADER FROM HERE!
 
             activePeers.values().stream()
                 .sorted(Comparator.comparingInt((PeerRecord p) -> p.xp).reversed())

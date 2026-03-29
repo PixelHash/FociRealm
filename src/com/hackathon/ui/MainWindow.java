@@ -90,6 +90,12 @@ public class MainWindow extends Application {
         Label subtitle = new Label("LAN Multiplayer Productivity");
         subtitle.setStyle("-fx-text-fill: white; -fx-font-size: 16px;");
 
+        // --- NEW: The Private Room Code Input ---
+        TextField roomInput = new TextField();
+        roomInput.setPromptText("Enter Arena Name (e.g. 'Hackathon')");
+        roomInput.setMaxWidth(350);
+        roomInput.setStyle("-fx-background-color: #2a2a35; -fx-text-fill: #00ff88; -fx-font-weight: bold; -fx-alignment: center; -fx-font-size: 14px;");
+
         Button hostBtn = new Button("Host New Arena");
         hostBtn.setStyle("-fx-background-color: #ff3366; -fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold; -fx-min-width: 250px;");
         
@@ -106,6 +112,9 @@ public class MainWindow extends Application {
 
         hostBtn.setOnAction(e -> {
             isHostMode = true;
+            String code = roomInput.getText().trim();
+            network.setRoomCode(code.isEmpty() ? "Public" : code); // Set the network tag!
+            
             DatabaseManager.initDB(); 
             currentXP = DatabaseManager.loadXP(network.getCurrentUser());
             network.startHostDatabaseServer(); 
@@ -116,11 +125,16 @@ public class MainWindow extends Application {
             if (ipInput.getText().isEmpty()) return;
             isHostMode = false;
             hostIpAddress = ipInput.getText().trim();
+            
+            String code = roomInput.getText().trim();
+            network.setRoomCode(code.isEmpty() ? "Public" : code); // Set the network tag!
+            
             currentXP = network.fetchXpFromHost(hostIpAddress);
             window.setScene(buildArenaScene());
         });
 
-        VBox lobbyLayout = new VBox(20, title, subtitle, hostBtn, orLabel, ipInput, joinBtn);
+        // Added roomInput to the UI layout
+        VBox lobbyLayout = new VBox(20, title, subtitle, roomInput, hostBtn, orLabel, ipInput, joinBtn);
         lobbyLayout.setAlignment(Pos.CENTER);
         lobbyLayout.setStyle("-fx-background-color: #121212;");
         
