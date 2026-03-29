@@ -38,10 +38,12 @@ public class OllamaManager {
     private void bootOllamaServer() {
         new Thread(() -> {
             try {
+                // --- NEW CROSS-PLATFORM BOOT LOGIC ---
                 boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
                 ProcessBuilder pb;
                 
                 if (isWindows) {
+                    // Windows needs to wrap the command in cmd.exe
                     pb = new ProcessBuilder("cmd.exe", "/c", "ollama serve");
                 } else {
                     // Linux/Mac can run it directly
@@ -71,5 +73,25 @@ public class OllamaManager {
                 System.out.println("[OllamaManager] ❌ CRITICAL: Could not execute 'ollama' command.");
             }
         }).start();
+    }
+
+    public void shutdown() {
+        System.out.println("[OllamaManager] Shutting down background AI server...");
+        try {
+            boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+            
+            if (isWindows) {
+                // WINDOWS: Force kill the actual executable so it doesn't become a memory leak
+                new ProcessBuilder("taskkill", "/F", "/IM", "ollama.exe").start();
+            } else {
+                // LINUX/MAC: Java's native destroy works perfectly
+                if (ollamaProcess != null && ollamaProcess.isAlive()) {
+                    ollamaProcess.destroy();
+                }
+            }
+            System.out.println("[OllamaManager] AI server successfully terminated.");
+        } catch (Exception e) {
+            System.out.println("[OllamaManager] ❌ Failed to shut down Ollama cleanly.");
+        }
     }
 }
