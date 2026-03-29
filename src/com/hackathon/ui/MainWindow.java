@@ -4,6 +4,7 @@ import com.hackathon.logic.AIService;
 import com.hackathon.logic.NetworkManager;
 import com.hackathon.logic.DatabaseManager;
 import com.hackathon.logic.VisionManager;
+import com.hackathon.logic.OllamaManager;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -16,6 +17,7 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 public class MainWindow extends Application {
+    private OllamaManager ollamaManager;
     private VisionManager visionManager;
 
     private Stage window;
@@ -60,6 +62,9 @@ public class MainWindow extends Application {
     @Override
     public void init() {
         aiService = new AIService();
+
+        ollamaManager = new OllamaManager();
+        ollamaManager.ensureOllamaIsRunning();
         
         visionManager = new VisionManager(() -> {
             Platform.runLater(() -> {
@@ -511,6 +516,7 @@ public class MainWindow extends Application {
     @Override
     public void stop() {
         visionManager.stopTracking();
+        if (ollamaManager != null) ollamaManager.shutdown();
         if (network != null) network.stop();
         System.exit(0);
     }
