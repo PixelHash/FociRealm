@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 public class AIService {
 
     // CRITICAL: Ensure this matches the model you pulled in setup.bat!
-    private static final String MODEL_NAME = "phi3"; 
+    private static final String MODEL_NAME = "llama3.2"; 
     
     // Using 127.0.0.1 instead of localhost to bypass Windows IPv6 routing issues
     private static final String OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate";
